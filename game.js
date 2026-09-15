@@ -208,9 +208,9 @@ class GameEngine {
       this.currentDropMult += critAdd;
       this.board.addPopup(peg.x, peg.y - 15, `+${critAdd}x CRIT!`, '#38bdf8', 18);
 
-      // Splitter Core Relic Check
-      if (this.hasRelic('multiballPrism') && Math.random() < 0.5) {
-        this.board.spawnOrb(this.orbArchetypes.standard, this.getRelicModifiers());
+      // Splitter Core Relic Check: spawn split orb at collision point with active orb cap
+      if (this.hasRelic('multiballPrism') && Math.random() < 0.4 && this.board.orbs.length < 5) {
+        this.board.spawnSplitOrb(peg.x, peg.y, this.orbArchetypes.standard, this.getRelicModifiers());
         this.board.addPopup(peg.x, peg.y + 15, 'SPLIT!', '#ffd700', 16);
       }
     } else if (peg.type === 'bomb') {
@@ -386,10 +386,10 @@ class GameEngine {
   }
 
   updateDropTicker() {
-    this.uiPegHits.textContent = this.currentDropHits;
+    this.uiPegHits.textContent = this.formatNumber(this.currentDropHits);
     this.uiMultVal.textContent = `x${this.currentDropMult.toFixed(1)}`;
     const estimatedValue = Math.round(this.currentDropBasePoints * this.currentDropMult);
-    this.uiDropVal.textContent = estimatedValue.toLocaleString();
+    this.uiDropVal.textContent = this.formatNumber(estimatedValue);
   }
 
   updateSatchelUI() {
@@ -433,13 +433,20 @@ class GameEngine {
     }
   }
 
+  formatNumber(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    return n.toLocaleString();
+  }
+
   updateUI() {
     this.uiFloorTitle.textContent = `FLOOR ${this.floor} // ANTE ${Math.ceil(this.floor / 3)}`;
-    this.uiTargetScore.textContent = this.targetScore.toLocaleString();
-    this.uiRoundScore.textContent = this.roundScore.toLocaleString();
-    this.uiNeededScore.textContent = `/ ${this.targetScore.toLocaleString()} pts`;
-    this.uiGold.textContent = this.gold;
-    this.uiBestScore.textContent = `${this.bestScore.toLocaleString()} pts`;
+    this.uiTargetScore.textContent = this.formatNumber(this.targetScore);
+    this.uiRoundScore.textContent = this.formatNumber(this.roundScore);
+    this.uiNeededScore.textContent = `/ ${this.formatNumber(this.targetScore)} pts`;
+    this.uiGold.textContent = this.formatNumber(this.gold);
+    this.uiBestScore.textContent = `${this.formatNumber(this.bestScore)} pts`;
     const progress = Math.min(100, (this.roundScore / this.targetScore) * 100);
     this.uiProgressFill.style.width = `${progress}%`;
   }

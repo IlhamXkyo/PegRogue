@@ -34,6 +34,10 @@ class PhysicsBoard {
     // Screen Shake
     this.screenShake = 0;
 
+    // Safeguards against infinite loops
+    this.refreshesThisDrop = 0;
+    this.maxSimultaneousOrbs = 6;
+
     this.initBuckets();
     this.generateBoard();
   }
@@ -86,16 +90,25 @@ class PhysicsBoard {
   }
 
   refreshAllPegs() {
+    if (this.refreshesThisDrop >= 2) {
+      this.addPopup(this.width / 2, this.height / 2, 'MAX REFRESHEs REACHED', '#94a3b8', 16);
+      return;
+    }
+    this.refreshesThisDrop++;
     this.pegs.forEach((p) => {
-      p.active = true;
-      p.hit = false;
-      p.scale = 1.4;
+      // Repopulate standard and bomb pegs, but do not re-trigger refresh pegs in the same chain
+      if (p.type !== 'refresh') {
+        p.active = true;
+        p.hit = false;
+        p.scale = 1.3;
+      }
     });
-    this.addPopup(this.width / 2, this.height / 2, 'BOARD REFRESHED!', '#22c55e', 22);
+    this.addPopup(this.width / 2, this.height / 2, `BOARD REFRESHED! (${this.refreshesThisDrop}/2)`, '#22c55e', 22);
     this.audio.playRefresh();
   }
 
   spawnOrb(archetype = 'standard', relicModifiers = {}) {
+    this.refreshesThisDrop = 0; // Reset refresh counter for new drop
     const speed = archetype.speed || 550;
     const vx = Math.cos(this.aimAngle) * speed;
     const vy = Math.sin(this.aimAngle) * speed;
@@ -107,16 +120,41 @@ class PhysicsBoard {
       vy: vy,
       radius: archetype.radius || 10,
       mass: archetype.mass || 1.0,
-      bounciness: (archetype.bounciness || this.restitution) * (relicModifiers.rubberCoat ? 1.35 : 1.0),
+      bounciness: (archetype.bounciness || this.restitution) * (relicModifiers.rubberCoat ? 1.25 : 1.0),
       archetype: archetype,
       trail: [],
       pierceRemaining: archetype.pierce || 0,
-      active: true
+      active: true,
+      lifetime: 0
     };
 
     this.orbs.push(orb);
     this.isAiming = false;
     this.audio.resetCombo();
+  }
+
+  spawnSplitOrb(x, y, archetype = 'standard', relicModifiers = {}) {
+    if (this.orbs.length >= this.maxSimultaneousOrbs) return;
+
+    const angle = (Math.random() - 0.5) * Math.PI * 0.7 - Math.PI / 2;
+    const speed = 260 + Math.random() * 120;
+
+    const orb = {
+      x: x,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 7.5,
+      mass: 0.8,
+      bounciness: (archetype.bounciness || this.restitution) * (relicModifiers.rubberCoat ? 1.2 : 0.95),
+      archetype: archetype,
+      trail: [],
+      pierceRemaining: 0,
+      active: true,
+      lifetime: 0
+    };
+
+    this.orbs.push(orb);
   }
 
   setAim(targetX, targetY) {
@@ -128,6 +166,10 @@ class PhysicsBoard {
   }
 
   addPopup(x, y, text, color = '#ffd700', size = 16) {
+    // Keep max 10 popups active at once to avoid screen flooding
+    if (this.popups.length > 10) {
+      this.popups.shift();
+    }
     this.popups.push({
       x: x,
       y: y,
@@ -136,11 +178,12 @@ class PhysicsBoard {
       size: size,
       alpha: 1.0,
       life: 0,
-      maxLife: 0.85
+      maxLife: 0.65
     });
   }
 
   createSparks(x, y, color = '#ffd700', count = 8) {
+    if (this.particles.length > 45) return;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const spd = 40 + Math.random() * 120;
@@ -153,7 +196,7 @@ class PhysicsBoard {
         color: color,
         alpha: 1.0,
         life: 0,
-        maxLife: 0.4 + Math.random() * 0.2
+        maxLife: 0.35 + Math.random() * 0.15
       });
     }
   }
@@ -207,8 +250,17 @@ class PhysicsBoard {
       for (let o = this.orbs.length - 1; o >= 0; o--) {
         const orb = this.orbs[o];
 
-        // Apply gravity
-        orb.vy += this.gravity * dtSub;
+        // Apply gravity with anti-trap nudge
+        orb.lifetime = (orb.lifetime || 0) + dtSub;
+        let effGravity = this.gravity;
+        if (orb.lifetime > 8) {
+          effGravity += 350; // extra pull down to prevent perpetual horizontal loops
+        }
+        if (orb.lifetime > 14) {
+          effGravity += 700;
+          orb.vy = Math.max(orb.vy, 360); // guarantee descent to bucket
+        }
+        orb.vy += effGravity * dtSub;
 
         orb.x += orb.vx * dtSub;
         orb.y += orb.vy * dtSub;
