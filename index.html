@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PEGROGUE // Physics Roguelike Pachinko</title>
+  <meta name="description" content="A physics roguelike pachinko game combining Peglin and Balatro mechanics with synergistic relics and ascending musical chimes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Main Game Cabinet Frame -->
+  <div class="cabinet-wrapper">
+    <!-- Left Sidebar: Run Stats & Active Relics -->
+    <aside class="sidebar-left">
+      <div class="brand-badge">PEGROGUE</div>
+      
+      <!-- Stage & Target Card -->
+      <div class="panel-card stage-card">
+        <div class="card-label">CURRENT BLIND</div>
+        <div id="ui-floor-title" class="stage-title">FLOOR 1 // ANTE I</div>
+        <div class="target-row">
+          <span class="target-label">TARGET</span>
+          <span id="ui-target-score" class="target-val">500</span>
+        </div>
+        <div class="score-progress-bar">
+          <div id="ui-progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="progress-labels">
+          <span id="ui-round-score">0</span>
+          <span id="ui-needed-score">/ 500 pts</span>
+        </div>
+      </div>
+
+      <!-- Ammo / Remaining Orbs -->
+      <div class="panel-card ammo-card">
+        <div class="card-label">ORB SATCHEL</div>
+        <div id="ui-orb-satchel" class="orb-queue">
+          <!-- Populated dynamically -->
+        </div>
+        <div class="satchel-count">
+          <span id="ui-orbs-left">3</span> DROPS REMAINING
+        </div>
+      </div>
+
+      <!-- Relic Inventory -->
+      <div class="panel-card relics-card">
+        <div class="card-label">ACTIVE RELICS (<span id="ui-relic-count">0</span>/5)</div>
+        <div id="ui-relic-list" class="relic-grid">
+          <div class="relic-empty-slot">EMPTY</div>
+          <div class="relic-empty-slot">EMPTY</div>
+          <div class="relic-empty-slot">EMPTY</div>
+        </div>
+      </div>
+
+      <!-- Coins -->
+      <div class="gold-display">
+        <span class="gold-icon">🪙</span>
+        <span id="ui-gold" class="gold-val">15</span>
+      </div>
+    </aside>
+
+    <!-- Center: Pachinko Board Playfield -->
+    <main class="playfield-container">
+      <!-- Live Drop Ticker -->
+      <div class="drop-ticker">
+        <div class="ticker-box">
+          <span class="ticker-label">PEGS HIT</span>
+          <span id="ui-peg-hits" class="ticker-val">0</span>
+        </div>
+        <div class="ticker-mult">
+          <span id="ui-mult-val" class="mult-num">x1.0</span>
+          <span class="mult-sub">MULT</span>
+        </div>
+        <div class="ticker-box">
+          <span class="ticker-label">DROP VALUE</span>
+          <span id="ui-drop-val" class="ticker-val gold">0</span>
+        </div>
+      </div>
+
+      <!-- 2D Canvas Playfield -->
+      <div class="canvas-box">
+        <canvas id="pachinko-canvas" width="600" height="760"></canvas>
+      </div>
+
+      <div class="controls-hint">
+        <span><kbd>Aim</kbd> Move Mouse / Touch</span>
+        <span><kbd>Launch</kbd> Click / Release</span>
+        <span><kbd>R</kbd> Discard Orb</span>
+      </div>
+    </main>
+
+    <!-- Right Sidebar: Next Orb & Ledger -->
+    <aside class="sidebar-right">
+      <div class="panel-card next-orb-card">
+        <div class="card-label">READY TO LAUNCH</div>
+        <div id="ui-active-orb-badge" class="active-orb-preview standard">
+          <div class="orb-icon-circle"></div>
+          <div class="orb-info">
+            <span id="ui-active-orb-name" class="active-name">Standard Orb</span>
+            <span id="ui-active-orb-desc" class="active-desc">Balanced mass and elasticity.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Peg Legend -->
+      <div class="panel-card legend-card">
+        <div class="card-label">BOARD ESSENCE</div>
+        <div class="legend-list">
+          <div class="legend-row">
+            <div class="peg-sample standard"></div>
+            <span>Standard (+10 pts)</span>
+          </div>
+          <div class="legend-row">
+            <div class="peg-sample crit"></div>
+            <span>Crit Peg (+25 pts, +x0.5)</span>
+          </div>
+          <div class="legend-row">
+            <div class="peg-sample bomb"></div>
+            <span>Bomb (Blast radius)</span>
+          </div>
+          <div class="legend-row">
+            <div class="peg-sample refresh"></div>
+            <span>Refresh (Reset pegs)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- High Score -->
+      <div class="panel-card best-card">
+        <div class="card-label">RECORD ANTE</div>
+        <div id="ui-best-score" class="best-score-val">0 pts</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Shop Modal (Between Rounds) -->
+  <div id="modal-shop" class="modal-backdrop">
+    <div class="shop-dialog">
+      <div class="shop-header">
+        <div class="shop-tag">BLIND CLEARED!</div>
+        <h2 class="shop-title">MERCHANT BAZAAR</h2>
+        <p class="shop-sub">Invest your winnings into powerful relics and specialized orbs.</p>
+        <div class="shop-gold-badge">
+          <span>YOUR COINS:</span>
+          <strong id="shop-gold-val">15</strong> 🪙
+        </div>
+      </div>
+
+      <div class="shop-shelf">
+        <div class="shelf-label">OFFERINGS FOR SALE</div>
+        <div id="shop-items-container" class="shop-items-grid">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="shop-actions">
+        <button id="btn-next-floor" class="btn-royal">
+          <span>ENTER NEXT FLOOR ▶</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div id="modal-gameover" class="modal-backdrop">
+    <div class="gameover-dialog">
+      <div class="go-badge">RUN DEFEATED</div>
+      <h2 class="go-title">OUT OF ORBS</h2>
+      <p class="go-sub">The pachinko board claimed your last shot before reaching the blind quota.</p>
+      
+      <div class="go-stats">
+        <div class="go-stat-row">
+          <span>Floors Cleared</span>
+          <strong id="go-floors">Floor 1</strong>
+        </div>
+        <div class="go-stat-row">
+          <span>Total Score</span>
+          <strong id="go-total-score">0</strong>
+        </div>
+        <div class="go-stat-row highlight">
+          <span>Best Combo Multiplier</span>
+          <strong id="go-max-mult">x1.0</strong>
+        </div>
+      </div>
+
+      <button id="btn-restart" class="btn-royal">
+        <span>NEW EXPEDITION ↺</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="audio.js"></script>
+  <script src="physics.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
