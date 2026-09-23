@@ -608,6 +608,24 @@ kbd {
   color: var(--gold-bright);
 }
 
+/* Responsive Canvas Box */
+.canvas-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+#pachinko-canvas {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  aspect-ratio: 600 / 760;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .cabinet-wrapper {
@@ -624,3 +642,4 @@ kbd {
     grid-template-columns: repeat(6, 1fr);
   }
 }
+

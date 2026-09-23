@@ -157,6 +157,13 @@ class GameEngine {
       }
     }, { passive: false });
 
+    // Keyboard Shortcuts (R to Discard Orb)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
+        this.discardCurrentOrb();
+      }
+    });
+
     // Shop Next Floor Button
     this.btnNextFloor.addEventListener('click', () => {
       this.modalShop.classList.remove('active');
@@ -168,6 +175,15 @@ class GameEngine {
       this.modalGameover.classList.remove('active');
       this.restartRun();
     });
+  }
+
+  discardCurrentOrb() {
+    if (!this.board.isAiming || this.satchel.length <= 1) return;
+    this.satchel.shift();
+    if (this.audio && typeof this.audio.playTone === 'function') {
+      this.audio.playTone(220, 0.08, 'sawtooth');
+    }
+    this.updateSatchelUI();
   }
 
   launchNextOrb() {
